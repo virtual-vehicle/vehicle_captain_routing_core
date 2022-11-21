@@ -1,5 +1,6 @@
 # vehicleCAPTAIN - routing core
 This software fixes the issue of multiple available hardware and software components for V2X communication.
+- TODO simple vCAPTAIN figure
 
 ## Features
 This software handles the input and output of V2X ASN1 streams. If a specific interface is implemented, it can be used for sending and receiving. The user interface does not change.
