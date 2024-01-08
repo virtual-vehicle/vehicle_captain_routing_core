@@ -1,0 +1,108 @@
+# this image is prepared to build x64 and armv8 binaries
+
+FROM build_paholib_armv8:base as paholib_armv8
+FROM build_paholib_x64:base as paholib_x64
+
+FROM ubuntu:18.04
+
+RUN apt-get update \
+  && DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y --no-install-recommends install \
+      tzdata \
+  && apt-get -y --no-install-recommends install \
+      ssh \
+      build-essential \
+      gcc \
+      g++ \
+      gdb \
+      clang \
+      cmake \
+      rsync \
+      tar \
+      python \
+      software-properties-common \
+      make cmake
+      # gcc-multilib-arm-linux-gnueabi g++-multilib-arm-linux-gnueabi
+
+## Unex Setup
+# GCC 8
+RUN add-apt-repository ppa:ubuntu-toolchain-r/test -y \
+  && apt-get update \
+  && apt-get --no-install-recommends install gcc-8 gcc-8-multilib g++-8 g++-8-multilib -y \
+  && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 80 --slave /usr/bin/g++ g++ /usr/bin/g++-8
+
+# Installing compiler for arm-linux-gnueabihf target
+RUN apt-get -y --no-install-recommends install linux-libc-dev-i386-cross gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf \
+    && apt-get -qq -y autoclean \
+    && apt-get -qq -y autoremove \
+    && apt-get -qq -y clean
+
+
+# Installing compiler for gcc-8-aarch64-linux-gnu target
+RUN apt-get -y --no-install-recommends install gcc-8-aarch64-linux-gnu g++-8-aarch64-linux-gnu \
+    && apt-get -qq -y autoclean \
+    && apt-get -qq -y autoremove \
+    && apt-get -qq -y clean
+
+## Unex Setup - done
+
+## Paho MQTT Setup
+RUN apt-get -y --no-install-recommends install libssl-dev
+
+# copy needed libs for compilation
+COPY --from=paholib_armv8 /paho.mqtt.c_install/lib/* /usr/aarch64-linux-gnu/lib/
+COPY --from=paholib_armv8 /paho.mqtt.c_install/include/* /usr/aarch64-linux-gnu/include/mqtt/
+
+COPY --from=paholib_armv8 /paho.mqtt.cpp_install/lib/* /usr/aarch64-linux-gnu/lib/
+COPY --from=paholib_armv8 /paho.mqtt.cpp_install/include/* /usr/aarch64-linux-gnu/include/mqtt/
+
+COPY --from=paholib_armv8 /usr/lib/aarch64-linux-gnu/libssl* /usr/aarch64-linux-gnu/lib/
+COPY --from=paholib_armv8 /usr/lib/aarch64-linux-gnu/libcrypto* /usr/aarch64-linux-gnu/lib/
+
+COPY --from=paholib_x64 /paho.mqtt.c_install/lib/* /usr/lib/
+COPY --from=paholib_x64 /paho.mqtt.c_install/include/* /usr/include/mqtt/
+
+COPY --from=paholib_x64 /paho.mqtt.cpp_install/lib/* /usr/lib/
+COPY --from=paholib_x64 /paho.mqtt.cpp_install/include/* /usr/include/mqtt/
+
+# RUN ldconfig
+
+## ZMQ Setup
+#RUN apt-get update -qq \
+#    && apt-get install -qq --yes --no-install-recommends \
+#        autoconf \
+#        automake \
+#        build-essential \
+#        git \
+#        libkrb5-dev \
+#        libsodium-dev \
+#        libtool \
+#        pkg-config \
+#    && rm -rf /var/lib/apt/lists/*
+#
+#WORKDIR /opt
+#RUN git clone https://github.com/zeromq/libzmq.git
+#WORKDIR /opt/libzmq
+#RUN git checkout v4.3.2
+#RUN ./autogen.sh \
+#    && ./configure --prefix=/usr/local --with-libsodium --with-libgssapi_krb5 \
+#    && make \
+#    && make check \
+#    && make install
+#WORKDIR /opt
+#RUN git clone https://github.com/zeromq/cppzmq.git
+#WORKDIR /opt/cppzmq
+#RUN git checkout v4.7.1
+#WORKDIR /opt/cppzmq/build
+#RUN cmake -DCPPZMQ_BUILD_TESTS=OFF .. \
+#    && make install
+## ZMQ Setup - done
+
+# deactivated, because multilib is not needed anymore
+## HACK, because gcc-multilib gets removed by above apt-get install
+#RUN ln -s /usr/include/asm-generic/ /usr/include/asm
+
+# create folder for compilation
+WORKDIR /tmp/compile
+COPY Dockerfiles/compile.sh .
+
+CMD [ "/tmp/compile/compile.sh" ]

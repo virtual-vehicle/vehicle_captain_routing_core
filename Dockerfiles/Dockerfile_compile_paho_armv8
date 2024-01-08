@@ -1,0 +1,28 @@
+FROM arm64v8/ubuntu:18.04
+
+RUN apt-get -y update
+RUN apt-get -y --no-install-recommends install ca-certificates build-essential gcc make cmake cmake-gui cmake-curses-gui git libssl-dev
+
+WORKDIR /opt
+RUN git clone -c advice.detachedHead=false --branch v1.3.8 --depth 1 https://github.com/eclipse/paho.mqtt.c.git
+WORKDIR /opt/paho.mqtt.c
+# RUN git checkout -b v1.3.8
+
+RUN cmake -E env CFLAGS="" \
+    cmake -E env LDFLAGS="" \
+    cmake -Bbuild -H. -DPAHO_ENABLE_TESTING=OFF -DPAHO_BUILD_STATIC=ON -DPAHO_WITH_SSL=ON -DPAHO_HIGH_PERFORMANCE=ON -DCMAKE_INSTALL_PREFIX=/paho.mqtt.c_install
+RUN cmake --build build/ --target install
+RUN ldconfig
+
+# Paho C++ library
+WORKDIR /opt
+RUN git clone -c advice.detachedHead=false --branch v1.2.0 --depth 1 https://github.com/eclipse/paho.mqtt.cpp
+WORKDIR /opt/paho.mqtt.cpp
+# RUN git checkout -b v1.2.0
+
+RUN cmake -E env CFLAGS="" \
+    cmake -E env CXXFLAGS="" \
+    cmake -E env LDFLAGS="" \
+    cmake -Bbuild -H. -DPAHO_BUILD_STATIC=ON -DCMAKE_PREFIX_PATH=/paho.mqtt.c_install -DCMAKE_INSTALL_PREFIX=/paho.mqtt.cpp_install
+RUN cmake --build build/ --target install
+RUN ldconfig

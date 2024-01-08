@@ -1,0 +1,47 @@
+# this image contains just the binaries and libs for execution
+
+FROM ubuntu:18.04
+
+# install requirements based on image-architecture
+ARG TARGETPLATFORM
+RUN apt-get update && apt-get -y --no-install-recommends install libssl1.1
+
+
+# create folder for ZMQ IPC communication
+WORKDIR /tmp/v2x
+RUN mkdir in \
+    && mkdir out \
+    && chmod 777 in \
+    && chmod 777 out
+
+# copy binaries
+ARG BUILD_DIR_x64
+ARG BUILD_DIR_ARMv8
+COPY ${BUILD_DIR_x64}/bin /bin_x64
+COPY ${BUILD_DIR_ARMv8}/bin /bin_armv8
+
+# copy libs
+ARG LIBS_x64_DEST
+ARG LIBS_ARMV8_DEST
+COPY ${LIBS_x64_DEST} /v2xlibs_x64
+COPY ${LIBS_ARMV8_DEST} /v2xlibs_armv8
+
+# link to correct binary and move libs based on image architecture
+ARG TARGETPLATFORM
+RUN \
+if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
+    echo "using amd64"; \
+    ln -s /bin_x64/v2xRoutingPlatform /v2x_bin; \
+    mv /v2xlibs_x64/* /usr/lib/; \
+elif [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
+    echo "using arm64 image with 32bit binary"; \
+    ln -s /bin_armv8/v2xRoutingPlatform /v2x_bin; \
+    mv /v2xlibs_armv8/* /usr/lib/; \
+else \
+    echo "ERROR undefined architecture for requirements"; \
+    exit; \
+fi
+
+WORKDIR /
+
+CMD [ "/v2x_bin" ]

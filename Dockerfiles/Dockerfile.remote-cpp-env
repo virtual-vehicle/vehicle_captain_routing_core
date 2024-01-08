@@ -1,0 +1,134 @@
+# CLion remote docker environment (How to build docker container, run and stop it)
+#
+# Build and run:
+#   docker build -t clion/remote-cpp-env:0.5 -f Dockerfiles/Dockerfile.remote-cpp-env .
+#   docker run -d --cap-add sys_ptrace -p127.0.0.1:2222:22 --name clion_remote_env clion/remote-cpp-env:0.5
+#   ssh-keygen -f "$HOME/.ssh/known_hosts" -R "[localhost]:2222"
+#
+# stop:
+#   docker stop clion_remote_env
+#
+# ssh credentials (test user):
+#   user@password
+
+FROM ubuntu:18.04
+
+RUN DEBIAN_FRONTEND="noninteractive" apt-get update && apt-get -y install tzdata
+
+RUN apt-get update \
+  && apt-get install -y ssh \
+      build-essential \
+      gcc \
+      g++ \
+      gdb \
+      clang \
+      cmake \
+      rsync \
+      tar \
+      python \
+  && apt-get clean
+
+## Unex Setup
+# GCC 8
+RUN apt-get update \
+  && apt-get install -y build-essential software-properties-common \
+  && add-apt-repository ppa:ubuntu-toolchain-r/test -y \
+  && apt-get update \
+  && apt-get install gcc-8 gcc-8-multilib g++-8 g++-8-multilib -y \
+  && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 80 --slave /usr/bin/g++ g++ /usr/bin/g++-8 \
+  && gcc -v
+
+# install make and cmake
+RUN apt-get install make -y
+RUN apt-get install cmake -y
+
+# Installing compiler for arm-linux-gnueabihf target
+#RUN apt-get install gcc-arm-linux-gnueabihf -y
+#RUN apt-get install g++-arm-linux-gnueabihf -y
+#RUN apt-get install linux-libc-dev:i386 -y
+
+# Installing compiler for gcc-8-aarch64-linux-gnu target
+#RUN apt-get install -y gcc-8-aarch64-linux-gnu
+#RUN apt-get install -y g++-8-aarch64-linux-gnu
+
+## Unex Setup - done
+
+## Paho MQTT Setup
+# dependencies
+RUN apt-get update
+RUN apt-get install build-essential gcc make cmake cmake-gui cmake-curses-gui git libssl-dev -y
+
+# Paho C library
+WORKDIR /opt
+RUN git clone https://github.com/eclipse/paho.mqtt.c.git
+WORKDIR /opt/paho.mqtt.c
+RUN git checkout v1.3.8
+
+RUN cmake -Bbuild -H. -DPAHO_ENABLE_TESTING=OFF -DPAHO_BUILD_STATIC=ON -DPAHO_WITH_SSL=ON -DPAHO_HIGH_PERFORMANCE=ON
+RUN cmake --build build/ --target install
+RUN ldconfig
+
+# Paho C++ library
+WORKDIR /opt
+RUN git clone https://github.com/eclipse/paho.mqtt.cpp
+WORKDIR /opt/paho.mqtt.cpp
+RUN git checkout v1.2.0
+
+RUN cmake -Bbuild -H. -DPAHO_BUILD_STATIC=ON
+RUN cmake --build build/ --target install
+RUN ldconfig
+
+## Paho MQTT Setup - done
+
+## ZMQ Setup
+#RUN apt-get update -qq \
+#    && apt-get install -qq --yes --no-install-recommends \
+#        autoconf \
+#        automake \
+#        build-essential \
+#        git \
+#        libkrb5-dev \
+#        libsodium-dev \
+#        libtool \
+#        pkg-config \
+#    && rm -rf /var/lib/apt/lists/*
+#
+#WORKDIR /opt
+#RUN git clone https://github.com/zeromq/libzmq.git
+#WORKDIR /opt/libzmq
+#RUN git checkout v4.3.2
+#RUN ./autogen.sh \
+#    && ./configure --prefix=/usr/local --with-libsodium --with-libgssapi_krb5 \
+#    && make \
+#    && make check \
+#    && make install
+#WORKDIR /opt
+#RUN git clone https://github.com/zeromq/cppzmq.git
+#WORKDIR /opt/cppzmq
+#RUN git checkout v4.7.1
+#WORKDIR /opt/cppzmq/build
+#RUN cmake -DCPPZMQ_BUILD_TESTS=OFF .. \
+#    && make install
+## ZMQ Setup - done
+
+# create folder for ZMQ IPC communication
+WORKDIR /tmp/v2x
+RUN mkdir in \
+    && mkdir out \
+    && chmod 777 in \
+    && chmod 777 out
+
+RUN ( \
+    echo 'LogLevel DEBUG2'; \
+    echo 'PermitRootLogin yes'; \
+    echo 'PasswordAuthentication yes'; \
+    echo 'Subsystem sftp /usr/lib/openssh/sftp-server'; \
+  ) > /etc/ssh/sshd_config_test_clion \
+  && mkdir /run/sshd
+
+RUN useradd -m user \
+  && yes password | passwd user
+
+RUN usermod -s /bin/bash user
+
+CMD ["/usr/sbin/sshd", "-D", "-e", "-f", "/etc/ssh/sshd_config_test_clion"]

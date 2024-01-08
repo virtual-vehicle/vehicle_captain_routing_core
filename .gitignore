@@ -1,0 +1,74 @@
+# IPR release
+ITSG5-Protocol-SDK-ARMv7a-v1.13/
+ITSG5-Protocol-SDK-ARMv8a-v1.13/
+ITSG5-Protocol-SDK-v1.13/
+
+# GNU global tags
+GTAGS
+GRTAGS
+GSYMS
+GPATH
+
+# Python byte-compile file
+__pycache__/
+*.py[co]
+
+# editor backup files
+*~
+\#*\#
+
+# draw.io editor files
+docu/*.bkp
+
+# backup files
+*.bak
+
+# Eclipse
+.cproject
+.project
+.pydevproject
+.settings/
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# CLion
+.idea/
+cmake-build-*/
+
+# ROSBag files
+*.bag
+
+# Environments
+.env/
+.venv/
+env/
+venv/
+ENV/
+
+# Autoware Resources
+*.pcd
+*.bag
+*.csv
+
+/.metadata/
+
+# colcon
+build/
+install/
+log/
+
+# catkin
+build/
+devel/
+install/
+logs/
+.catkin_tools/
+
+# Don't ignore src/ because full-text search won't work.
+
+build_armv7
+build_armv8
+build_x86
+build_x64
