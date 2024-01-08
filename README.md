@@ -4,6 +4,8 @@ This software fixes the issue of multiple available hardware and software compon
 
 The available implementation supports ITSG5 (802.11p) communication via the [Unex SOM301-E](https://unex.com.tw/en/product/som/), as well as V2N via an MQTT server.
 
+Checkout the documentation folder for Charts, Configurations and Setups. 
+
 ## IMPORTANT Prerequisites for Quickstart
 The [Unex V2XCast](https://unex.com.tw/en/v2xcast/) library is a mandatory core component of this software. The software will not compile without it. Please simply add the software in the respictive dummy folders and remove the "dummy" part. Then continue with.
 
